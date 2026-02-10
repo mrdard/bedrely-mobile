@@ -1,0 +1,30 @@
+{
+  "project_info": {
+    "project_number": "532575591521",
+    "firebase_url": "https://pushups-e5068.firebaseio.com",
+    "project_id": "pushups-e5068",
+    "storage_bucket": "pushups-e5068.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:532575591521:android:bd9eb8bb9d42d458711e20",
+        "android_client_info": {
+          "package_name": "com.bedrelymobile"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDHiYQYvo2J8RQ_EbpabyMqWs1hH1LhE4I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

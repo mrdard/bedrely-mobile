@@ -1,44 +1,255 @@
 /**
- * Sample React Native App
- * https://github.com/facebook/react-native
- *
- * @format
+ * Bedrely - Workout Timer App
+ * Login Screen with Firebase & Google Auth
  */
 
-import { NewAppScreen } from '@react-native/new-app-screen';
-import { StatusBar, StyleSheet, useColorScheme, View } from 'react-native';
+import React, {useState, useEffect} from 'react';
 import {
-  SafeAreaProvider,
-  useSafeAreaInsets,
-} from 'react-native-safe-area-context';
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  StatusBar,
+  ActivityIndicator,
+} from 'react-native';
+import {SafeAreaProvider} from 'react-native-safe-area-context';
+import auth from '@react-native-firebase/auth';
+import {GoogleSignin} from '@react-native-google-signin/google-signin';
+
+// Configure Google Sign-In
+GoogleSignin.configure({
+  webClientId:
+    '532575591521-XXXXXX.apps.googleusercontent.com', // You'll need to get this from Firebase Console
+});
 
 function App() {
-  const isDarkMode = useColorScheme() === 'dark';
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [signingIn, setSigningIn] = useState(false);
 
+  // Listen for auth state changes
+  useEffect(() => {
+    const subscriber = auth().onAuthStateChanged(userState => {
+      setUser(userState);
+      setLoading(false);
+    });
+    return subscriber;
+  }, []);
+
+  const handleGoogleSignIn = async () => {
+    try {
+      setSigningIn(true);
+      console.log('Starting Google Sign-In...');
+
+      // Check if device supports Google Play
+      await GoogleSignin.hasPlayServices({showPlayServicesUpdateDialog: true});
+
+      // Get user info from Google
+      const signInResult = await GoogleSignin.signIn();
+      console.log('Google Sign-In successful:', signInResult);
+
+      // Create a Google credential with the token
+      const googleCredential = auth.GoogleAuthProvider.credential(
+        signInResult.data?.idToken,
+      );
+
+      // Sign in to Firebase with the Google credential
+      const userCredential = await auth().signInWithCredential(
+        googleCredential,
+      );
+      console.log('Firebase sign-in successful:', userCredential.user.email);
+    } catch (error) {
+      console.error('Google Sign-In error:', error);
+      alert(`Sign-in failed: ${error.message}`);
+    } finally {
+      setSigningIn(false);
+    }
+  };
+
+  const handleSignOut = async () => {
+    try {
+      await GoogleSignin.signOut();
+      await auth().signOut();
+      console.log('Signed out successfully');
+    } catch (error) {
+      console.error('Sign-out error:', error);
+    }
+  };
+
+  // Loading state
+  if (loading) {
+    return (
+      <SafeAreaProvider>
+        <StatusBar barStyle="light-content" backgroundColor="#000000" />
+        <View style={styles.container}>
+          <ActivityIndicator size="large" color="#FFFFFF" />
+        </View>
+      </SafeAreaProvider>
+    );
+  }
+
+  // User is signed in
+  if (user) {
+    return (
+      <SafeAreaProvider>
+        <StatusBar barStyle="light-content" backgroundColor="#000000" />
+        <View style={styles.container}>
+          <View style={styles.header}>
+            <Text style={styles.logo}>💪</Text>
+            <Text style={styles.welcomeText}>Welcome back!</Text>
+            <Text style={styles.emailText}>{user.email}</Text>
+          </View>
+
+          <View style={styles.buttonContainer}>
+            <Text style={styles.comingSoon}>
+              🏋️ Timer features coming soon
+            </Text>
+            <TouchableOpacity
+              style={styles.signOutButton}
+              onPress={handleSignOut}
+              activeOpacity={0.8}>
+              <Text style={styles.signOutButtonText}>Sign Out</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </SafeAreaProvider>
+    );
+  }
+
+  // Login screen
   return (
     <SafeAreaProvider>
-      <StatusBar barStyle={isDarkMode ? 'light-content' : 'dark-content'} />
-      <AppContent />
+      <StatusBar barStyle="light-content" backgroundColor="#000000" />
+      <View style={styles.container}>
+        {/* Logo/Title */}
+        <View style={styles.header}>
+          <Text style={styles.logo}>💪</Text>
+          <Text style={styles.title}>BEDRELY</Text>
+          <Text style={styles.subtitle}>Workout Timer</Text>
+        </View>
+
+        {/* Google Sign-In Button */}
+        <View style={styles.buttonContainer}>
+          <TouchableOpacity
+            style={styles.googleButton}
+            onPress={handleGoogleSignIn}
+            disabled={signingIn}
+            activeOpacity={0.8}>
+            {signingIn ? (
+              <ActivityIndicator color="#000000" />
+            ) : (
+              <>
+                <Text style={styles.googleIcon}>G</Text>
+                <Text style={styles.googleButtonText}>Sign in with Google</Text>
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+
+        {/* Footer */}
+        <Text style={styles.footer}>
+          Track your workouts • Time your exercises • Reach your goals
+        </Text>
+      </View>
     </SafeAreaProvider>
-  );
-}
-
-function AppContent() {
-  const safeAreaInsets = useSafeAreaInsets();
-
-  return (
-    <View style={styles.container}>
-      <NewAppScreen
-        templateFileName="App.tsx"
-        safeAreaInsets={safeAreaInsets}
-      />
-    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+    backgroundColor: '#000000',
+    justifyContent: 'space-between',
+    paddingVertical: 60,
+    paddingHorizontal: 24,
+  },
+  header: {
+    alignItems: 'center',
+    marginTop: 80,
+  },
+  logo: {
+    fontSize: 80,
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 48,
+    fontWeight: '900',
+    color: '#FFFFFF',
+    letterSpacing: 4,
+    marginBottom: 8,
+  },
+  subtitle: {
+    fontSize: 16,
+    color: '#888888',
+    letterSpacing: 2,
+    textTransform: 'uppercase',
+  },
+  welcomeText: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#FFFFFF',
+    marginBottom: 8,
+  },
+  emailText: {
+    fontSize: 16,
+    color: '#888888',
+  },
+  buttonContainer: {
+    width: '100%',
+  },
+  googleButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    shadowColor: '#FFFFFF',
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  googleIcon: {
+    fontSize: 24,
+    fontWeight: '700',
+    color: '#4285F4',
+    marginRight: 12,
+  },
+  googleButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#000000',
+  },
+  comingSoon: {
+    fontSize: 18,
+    color: '#666666',
+    textAlign: 'center',
+    marginBottom: 24,
+  },
+  signOutButton: {
+    backgroundColor: '#1a1a1a',
+    paddingVertical: 16,
+    paddingHorizontal: 24,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: '#333333',
+  },
+  signOutButtonText: {
+    fontSize: 18,
+    fontWeight: '600',
+    color: '#FFFFFF',
+    textAlign: 'center',
+  },
+  footer: {
+    textAlign: 'center',
+    fontSize: 14,
+    color: '#555555',
+    lineHeight: 20,
   },
 });
 
