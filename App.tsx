@@ -13,13 +13,16 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {SafeAreaProvider} from 'react-native-safe-area-context';
+import {NavigationContainer} from '@react-navigation/native';
 import auth from '@react-native-firebase/auth';
+import crashlytics from '@react-native-firebase/crashlytics';
+import analytics from '@react-native-firebase/analytics';
 import {GoogleSignin} from '@react-native-google-signin/google-signin';
+import TabNavigator from './src/navigation/TabNavigator';
 
 // Configure Google Sign-In
 GoogleSignin.configure({
-  webClientId:
-    '532575591521-XXXXXX.apps.googleusercontent.com', // You'll need to get this from Firebase Console
+  webClientId: '532575591521-eiioslbdf1o6lrumqtjdnl187lqiq1ca.apps.googleusercontent.com',
 });
 
 function App() {
@@ -27,11 +30,29 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [signingIn, setSigningIn] = useState(false);
 
+  // Initialize Crashlytics and Analytics
+  useEffect(() => {
+    // Enable crash collection
+    crashlytics().setCrashlyticsCollectionEnabled(true);
+
+    // Log app open event
+    analytics().logAppOpen();
+
+    console.log('📊 Crashlytics and Analytics initialized');
+  }, []);
+
   // Listen for auth state changes
   useEffect(() => {
     const subscriber = auth().onAuthStateChanged(userState => {
       setUser(userState);
       setLoading(false);
+
+      // Set user identifier for Crashlytics
+      if (userState) {
+        crashlytics().setUserId(userState.uid);
+        analytics().setUserId(userState.uid);
+        console.log('👤 User logged in:', userState.uid);
+      }
     });
     return subscriber;
   }, []);
@@ -58,8 +79,15 @@ function App() {
         googleCredential,
       );
       console.log('Firebase sign-in successful:', userCredential.user.email);
+
+      // Log sign-in event to Analytics
+      await analytics().logLogin({method: 'google'});
     } catch (error) {
       console.error('Google Sign-In error:', error);
+
+      // Log error to Crashlytics
+      crashlytics().recordError(error);
+
       alert(`Sign-in failed: ${error.message}`);
     } finally {
       setSigningIn(false);
@@ -71,8 +99,12 @@ function App() {
       await GoogleSignin.signOut();
       await auth().signOut();
       console.log('Signed out successfully');
+
+      // Log sign-out event to Analytics
+      await analytics().logEvent('sign_out');
     } catch (error) {
       console.error('Sign-out error:', error);
+      crashlytics().recordError(error);
     }
   };
 
@@ -88,30 +120,14 @@ function App() {
     );
   }
 
-  // User is signed in
+  // User is signed in - show tab navigation
   if (user) {
     return (
       <SafeAreaProvider>
-        <StatusBar barStyle="light-content" backgroundColor="#000000" />
-        <View style={styles.container}>
-          <View style={styles.header}>
-            <Text style={styles.logo}>💪</Text>
-            <Text style={styles.welcomeText}>Welcome back!</Text>
-            <Text style={styles.emailText}>{user.email}</Text>
-          </View>
-
-          <View style={styles.buttonContainer}>
-            <Text style={styles.comingSoon}>
-              🏋️ Timer features coming soon
-            </Text>
-            <TouchableOpacity
-              style={styles.signOutButton}
-              onPress={handleSignOut}
-              activeOpacity={0.8}>
-              <Text style={styles.signOutButtonText}>Sign Out</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
+        <NavigationContainer>
+          <StatusBar barStyle="light-content" backgroundColor="#000000" />
+          <TabNavigator onSignOut={handleSignOut} />
+        </NavigationContainer>
       </SafeAreaProvider>
     );
   }

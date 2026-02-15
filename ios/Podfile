@@ -8,6 +8,9 @@ require Pod::Executable.execute_command('node', ['-p',
 platform :ios, min_ios_version_supported
 prepare_react_native_project!
 
+# Firebase requires static frameworks
+use_frameworks! :linkage => :static
+
 linkage = ENV['USE_FRAMEWORKS']
 if linkage != nil
   Pod::UI.puts "Configuring Pod with #{linkage}ally linked Frameworks".green
@@ -15,8 +18,13 @@ if linkage != nil
 end
 
 target 'BedrelyMobile' do
-  use_modular_headers!
   config = use_native_modules!
+
+  # Enable modular headers only for specific Firebase dependencies
+  pod 'FirebaseAuthInterop', :modular_headers => true
+  pod 'FirebaseAppCheckInterop', :modular_headers => true
+  pod 'GoogleUtilities', :modular_headers => true
+  pod 'RecaptchaInterop', :modular_headers => true
 
   use_react_native!(
     :path => config[:reactNativePath],
@@ -31,5 +39,14 @@ target 'BedrelyMobile' do
       :mac_catalyst_enabled => false,
       # :ccache_enabled => true
     )
+
+    # Allow non-modular includes for Firebase pods to work with CLANG_ENABLE_MODULES=YES
+    installer.pods_project.targets.each do |target|
+      if ['RNFBApp', 'RNFBAuth', 'RNFBFirestore'].include? target.name
+        target.build_configurations.each do |config|
+          config.build_settings['CLANG_ALLOW_NON_MODULAR_INCLUDES_IN_FRAMEWORK_MODULES'] = 'YES'
+        end
+      end
+    end
   end
 end
